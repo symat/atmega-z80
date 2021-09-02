@@ -1315,11 +1315,11 @@ Connection ~ 7600 4850
 Wire Wire Line
 	7600 4850 7600 4950
 Text Label 7550 4850 2    50   ~ 0
-A14
+A15
 Wire Wire Line
 	8200 4500 7400 4500
 Text Label 7550 4500 2    50   ~ 0
-A15
+A14
 $Comp
 L 74xx:74HC00 U6
 U 4 1 612C8DFC
