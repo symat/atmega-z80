@@ -48,5 +48,10 @@ Please take a look here for the latest version: [schema/atmega-z80.pdf](schema/a
 
 You can find the editable files in the ['schema' folder](schema/). We use the KICad tool for schema design: https://www.kicad.org/download/
 
+TODO:
+ - add a voltage regulator + two capacitors to the USB connector? (LM1084IT-5.0/NOPB, https://atmega32-avr.com/select-voltage-regulator/)
+ - double-check the resistor values for the LEDs
+ 
+
 ## License
 This is an open project (licensed under BSD-3). Use it for free, just don't point fingers / blame us ;)
