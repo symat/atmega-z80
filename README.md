@@ -1,6 +1,5 @@
 
 # atmega-z80
-(I'm open for suggestions for a better project name)
 
 
 ## Status
@@ -17,19 +16,19 @@ We are building here yet another 8bit hobby computer. Because it is fun. And thi
  - Let's keep the HW design relatively simple. (I'm personally more interested in the 8bit programming part and want to go deeper into the kernel and user code.)
  - We should be able to compile C code to run it on the new computer.
  - We don't need a full-fledged, stand-alone computer. I'm sure everyone has already a few of those on our desks... We don't build this to actually use it for work or gaming.
- - The whole computer should not have more than a handful of ICs. No FPGA or complex MCU with a need for an expensive programmer. Anyone should be able to build it on a breadboard for $20-30 worth of components.
+ - The whole computer should not have more than a handful of ICs. No FPGA or complex MCU with a need for an expensive programmer. Anyone should be able to build it on a breadboard for $20-30 worth of components. 
  - Don't use logic level (voltage) converters, keep everything e.g. on 5V or on 3.3V.
  - We can have VGA / keyboard / SD Card support later (if someone needs it), but the first thing is to have USB support and connection to a PC, so we can implement a small thin terminal program that can send keyboard and mouse events, display video, play music even.
 
 ## Hardware design plans
 The basic design is not new or original, it is very much based on other projects available on the internet. I'm especially grateful for [this one, the MBC2 project](https://hackaday.io/project/159973-z80-mbc2-a-4-ics-homebrew-z80-computer) (80% of the HW design comes from this project). 
 
- - We use a relatively new Z80 CPU, capable to run at 10MHz. 
+ - We use a relatively new Z80 CPU, capable to run at 10MHz.
  - A 20MHz ATMega chip (similar to those you can find in Arduino boards) is helping the CPU as ROM emulator, boot loader and clock generator. Also handling all the IO requests from the CPU.
  - An IO wait logic is implemented using an SR latch, forcing the CPU to wait until the ATMega chip processed the IO operations.
- - The ATMgega chip can access both the data bus and the first 6 bit of the address bus. Having access to a part of the address bus makes the boot loading easier and also enables us to use IO and interrupt addresses.
- - For now, we added 512 KB RAM, using 16KB banks. The CPU will be able to set the bank ID with an IO write operation and then the given 16 KB bank will be visible for the CPU on the third 16KB memory slot of the 64KB address space (starting from 0x8000).
- - We store the bank address in an 8 bit gated D latch IC. This means we can address the banks in 8 bits, so the design works until 4 MB (16KB * 256). But 4MB sounds a bit overkill and also more expensive. It is hard to find a single DIP SRAM chip over 512 KB. Moving away from DIP makes it harder to assemble the computer on a breadboard, while using many separate 512 KB RAM chips would require more complex banking logic (with lot more footprint and wiring on the breadboard). But in theory we can extend the RAM later easily if needed.
+ - The ATMgega chip can access both the data bus and the first 6 bits of the address bus. Having access to a part of the address bus makes the boot loading easier and also enables us to use IO and interrupt addresses.
+ - For now, we added 512 KB RAM, using 16 KB banks. The CPU will be able to set the bank ID with an IO write operation and then the given 16 KB bank will be visible for the CPU on the third 16KB memory slot of the 64KB address space (between 0x8000 and 0xbfff).
+ - We store the bank address in an 8 bit gated D latch IC. This means we can address the banks in 8 bits, so the design works until 4 MB (16KB * 256). But 4MB sounds a bit overkill and also more expensive. It is hard to find a single DIP parallel 8bit SRAM chip over 512 KB. Moving away from DIP makes it harder to assemble the computer on a breadboard, while using many separate 512 KB RAM chips would require a bit more complex banking logic (with lot more footprint and wiring on the breadboard). But in theory we can extend the RAM later easily if needed.
  - We have an USB controller chip, converting the UART port of ATMega to USB.
  - The USB port is used also for powering the whole atmega-z80.
  - We have a user button and LED, both can be used by the programmer to interact directly with the user. (who needs 101 keys and zillion pixels... :p)
