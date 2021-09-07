@@ -1,0 +1,5 @@
+_autosave*
+*.csv
+*.tsv
+*.xml
+*bak

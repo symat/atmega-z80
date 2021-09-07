@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name atmega-z80)(type KiCad)(uri ${KIPRJMOD}/atmega-z80.pretty)(options "")(descr ""))
+)
