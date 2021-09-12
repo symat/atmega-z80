@@ -47,10 +47,65 @@ Please take a look here for the latest version: [schema/atmega-z80.pdf](schema/a
 
 You can find the editable files in the ['schema' folder](schema/). We use the KICad tool for schema design: https://www.kicad.org/download/
 
-TODO:
- - add a voltage regulator + two capacitors to the USB connector? (LM1084IT-5.0/NOPB, https://atmega32-avr.com/select-voltage-regulator/)
- - double-check the resistor values for the LEDs
  
+## Connecting the programmer
+
+We are using the open source UABAsp programmer (https://www.fischl.de/usbasp/). It comes with an ISP 10 connector. You need to connect the programmer to the ATMega ports indicated in the schema (RESET and PB3, PB6, PB7). Also you need to connect the 5V and GND from the programmer to the board, basically using the Programmer as a power source while you are programing the board.
+
+The following photo shows how to connect the ISP 10 connector to your breadboard:
+
+![](docs/ISP-10-pin.jpg?raw=true "USBAsp programmer connector")
+ 
+## Development
+
+The source code needs to be deployed into the ATMega chip can be found here: ['src/atmega' folder](src/atmega/)
+
+The source code running on the Z80 can be found here: ['src/z80' folder](src/z80/)
+
+### Prerequisites for Mac
+
+First, make sure you have xcode command line developer tools installed with:
+```
+$ xcode-select --install
+```
+
+Then install the latest versions of the avr command line tools (avr-libc included in avr-gcc):
+```
+$ brew tap osx-cross/avr
+$ brew install avr-gcc@11 avr-binutils avrdude
+```
+(you can check the current versions of avr-gcc available through homebrew here: https://github.com/osx-cross/homebrew-avr)
+
+Add the following two lines to your .bash_profile or .zshrc file:
+```
+export PATH="/usr/local/opt/avr-gcc@11/bin:$PATH"
+export AVRGCC_LDFLAGS="-L/usr/local/opt/avr-gcc@11/lib"
+```
+
+### Initializing ATMega clock
+
+ATMega shipped with internal 8MHz clock enabled and the clock prescaler set to 8, resulting in 1 MHz clock speed. In the code we assume you wired the 20 MHz crystal to ATMega already. To configure the external crystal oscillator to be used, you need to set the fuses on ATMega once before programming it. (useful online fuse bit calculator: http://eleccelerator.com/fusecalc/fusecalc.php?chip=atmega324pa)
+
+Use the following command (from the `src/atmega` folder) to set the fuses to the full 20MHz speed: `make atmega_fuse_init`
+
+If you want to rollback the factory defaults (1MHz internal clock), use: `make atmega_fuse_factory_reset`
+
+
+### Building the and deploying the code to the board
+
+First build the Z80 code:
+```
+cd src/z80
+
+# TODO
+```
+
+Then build the atmega code and flash ATMega. Note, the ATMega flash will also contain the Z80 code, which will be copied into the Z80 RAM during startup.
+```
+cd src/atmega
+make
+make program
+```
 
 ## License
 This is an open project (licensed under BSD-3). Use it for free, just don't point fingers / blame us ;)
