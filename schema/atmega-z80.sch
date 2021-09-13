@@ -5,8 +5,8 @@ $Descr A3 16535 11693
 encoding utf-8
 Sheet 1 1
 Title "ATMega-Z80"
-Date "2021-09-12"
-Rev "V0.3"
+Date "2021-09-13"
+Rev "V0.4"
 Comp "https://github.com/symat/atmega-z80"
 Comment1 "Open project, licensed under BSD-3."
 Comment2 "5V, 512 KB banked memory, USB, SPI and I2C connection. User led / button."
@@ -2335,13 +2335,10 @@ F 3 "" H 9600 7600 50  0001 C CNN
 	1    9600 7600
 	-1   0    0    1   
 $EndComp
-Wire Wire Line
-	9050 8000 9200 8000
-Text GLabel 9050 8000 0    50   Input ~ 0
+Text GLabel 8450 8000 0    50   Input ~ 0
 USB_IO_LED
 NoConn ~ 9200 7800
 NoConn ~ 9200 7900
-NoConn ~ 9200 8100
 NoConn ~ 9200 8600
 NoConn ~ 9200 8700
 Wire Wire Line
@@ -2395,9 +2392,9 @@ F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/20005565B.pdf" H 9600 8900 
 	1    9600 8200
 	-1   0    0    1   
 $EndComp
-Text Label 7450 8300 0    50   ~ 0
+Text Label 7200 8300 0    50   ~ 0
 ATMEGA_RX_AND_USB_TX
-Text Label 7450 8400 0    50   ~ 0
+Text Label 7200 8400 0    50   ~ 0
 ATMEGA_TX_AND_USB_RX
 Wire Wire Line
 	10000 8700 10100 8700
@@ -2779,6 +2776,38 @@ Wire Notes Line
 	13400 6850 13400 9850
 Wire Notes Line
 	10650 6850 13400 6850
+$Comp
+L Diode:1N5817 D2
+U 1 1 61418E5F
+P 8700 8100
+F 0 "D2" H 8550 8000 50  0000 C CNN
+F 1 "1N5817" H 8800 8000 50  0000 C CNN
+F 2 "Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal" H 8700 7925 50  0001 C CNN
+F 3 "http://www.vishay.com/docs/88525/1n5817.pdf" H 8700 8100 50  0001 C CNN
+	1    8700 8100
+	1    0    0    -1  
+$EndComp
+$Comp
+L Diode:1N5817 D1
+U 1 1 6141BB94
+P 8700 7900
+F 0 "D1" H 8550 8000 50  0000 C CNN
+F 1 "1N5817" H 8800 8000 50  0000 C CNN
+F 2 "Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal" H 8700 7725 50  0001 C CNN
+F 3 "http://www.vishay.com/docs/88525/1n5817.pdf" H 8700 7900 50  0001 C CNN
+	1    8700 7900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9200 8100 8850 8100
+Wire Wire Line
+	9200 8000 8850 8000
+Wire Wire Line
+	8850 8000 8850 7900
+Wire Wire Line
+	8550 7900 8550 8000
+Wire Wire Line
+	8450 8000 8550 8000
 Wire Bus Line
 	8550 2100 8550 3250
 Wire Bus Line
@@ -2799,4 +2828,7 @@ Wire Bus Line
 	11900 2100 11900 3600
 Wire Bus Line
 	5250 2100 5250 5600
+Connection ~ 8550 8000
+Wire Wire Line
+	8550 8000 8550 8100
 $EndSCHEMATC
