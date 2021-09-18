@@ -219,4 +219,4 @@ TODO
 
 License
 =======
-This is an open project (licensed under BSD-3). Use it for free, just don't point fingers / blame us ;)
+This is an open project. The software is licensed under BSD-3, while the hardware is licensed under CERN-OHL-P. Both licenses are permissive. Feel free to use anything here, just don't point fingers / blame us ;)
