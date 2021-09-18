@@ -1,14 +1,36 @@
 
-# atmega-z80
+ATMega-Z80
+==========
 
+We are building here yet another 8bit hobby computer. Because it is fun. And this is what an engineer does, *"MIDWAY upon the journey of our life"*. ;)
 
-## Status
-**Use anything in this repo with caution!**
+Disclaimer: **Use anything in this repo with caution!**
 
 Nothing works yet, we just started to plan the whole thing. The only thing we are sure is that things will change, as we move forward. Plus the fact that we will move forward very slooowly, as this is only a hobby project and everyone is quite busy with other things. 
 
-## Goals
-We are building here yet another 8bit hobby computer. Because it is fun. And this is what an engineer does, when *"MIDWAY upon the journey of our life we found ourself within a forest dark"*. ;)
+
+Table of Contents
+-----------------
+
+  * [Goals](#goals)
+  * [Hardware design](#hardware-design)
+    * [Schema](#schema)
+    * [PCB](#pcb)
+  * [Using the board](#using-the-board)
+  * [Development](#development)
+    * [Prerequisites for Linux](#prerequisites-for-linux)
+    * [Prerequisites for Windows](#prerequisites-for-windows)
+    * [Prerequisites for Mac](#prerequisites-for-mac)
+    * [(Optional) Configuring USB HWID](#optional-configuring-usb-hwid)
+	* [ATMega Programmer](#atmega-programmer)
+	  * [Initializing ATMega clock](#initializing-atmega-clock)
+	  * [Deploying the ATMega code](#deploying-the-atmega-code)
+	* [Deploying the Z80 'ROM' code](#deploying-the-z80-rom-code)
+  * [License](#license)
+
+
+Goals
+=====
 
 **The main goals are:**
 
@@ -16,11 +38,13 @@ We are building here yet another 8bit hobby computer. Because it is fun. And thi
  - Let's keep the HW design relatively simple. (I'm personally more interested in the 8bit programming part and want to go deeper into the kernel and user code.)
  - We should be able to compile C code to run it on the new computer.
  - We don't need a full-fledged, stand-alone computer. I'm sure everyone has already a few of those on our desks... We don't build this to actually use it for work or gaming.
- - The whole computer should not have more than a handful of ICs. No FPGA or complex MCU with a need for an expensive programmer. Anyone should be able to build it on a breadboard for $20-30 worth of components. 
+ - The whole computer should not have more than a handful of ICs. No FPGA or complex MCU with a need for an expensive programmer. Anyone should be able to build it on a breadboard for $40-50 worth of components (incl. programmer). 
  - Don't use logic level (voltage) converters, keep everything e.g. on 5V or on 3.3V.
  - We can have VGA / keyboard / SD Card support later (if someone needs it), but the first thing is to have USB support and connection to a PC, so we can implement a small thin terminal program that can send keyboard and mouse events, display video, play music even.
 
-## Hardware design plans
+Hardware design
+===============
+
 The basic design is not new or original, it is very much based on other projects available on the internet. I'm especially grateful for [this one, the MBC2 project](https://hackaday.io/project/159973-z80-mbc2-a-4-ics-homebrew-z80-computer) (80% of the HW design comes from this project). 
 
  - We use a relatively new Z80 CPU, capable to run at 10MHz.
@@ -35,34 +59,71 @@ The basic design is not new or original, it is very much based on other projects
  - We plan to add some status indicator LEDs:
 	 - Power LED (power come through the USB cable)
 	 - Z80 running LED (means the Z80 is active, not in 'halt' state)
-	 - USB IO LED (ATMega is sending data through the USB)
+	 - USB IO LED (ATMega is communicating through the USB)
 	 - CPU IO LED (the CPU is doing IO read or write)
 	 - Memory LED (the CPU is reading from / writing to anywhere in the RAM)
 	 - Extended memory LED (the CPU is reading from / writing to the banked part of the RAM)
 	 - User LED (some program running on the Z80 turned the user LED on)
 
 
-## Schema
+Schema
+------
 Please take a look here for the latest version: [schema/atmega-z80.pdf](schema/atmega-z80.pdf)
 
 You can find the editable files in the ['schema' folder](schema/). We use the KICad tool for schema design: https://www.kicad.org/download/
 
+
+PCB
+---
+
+TODO
+
+
+Using the board
+===============
+
+For now, you can only interact with the board using the console application. Later we might add keyboard and display support as well as other periferias. But the console app should be always capable to emulate these, as people might not want to use dedicated periferias for ATMega-Z80.
+
+Prerequisites to use the console:
+```
+pip3 install pyserial==3.5
+```
+
+Using the console:
+```
+src/console/console.py
+```
+
  
-## Connecting the programmer
-
-We are using the open source UABAsp programmer (https://www.fischl.de/usbasp/). It comes with an ISP 10 connector. You need to connect the programmer to the ATMega ports indicated in the schema (RESET and PB3, PB6, PB7). Also you need to connect the 5V and GND from the programmer to the board, basically using the Programmer as a power source while you are programing the board.
-
-The following photo shows how to connect the ISP 10 connector to your breadboard:
-
-![](docs/ISP-10-pin.jpg?raw=true "USBAsp programmer connector")
- 
-## Development
+Development
+===========
 
 The source code needs to be deployed into the ATMega chip can be found here: ['src/atmega' folder](src/atmega/)
 
 The source code running on the Z80 can be found here: ['src/z80' folder](src/z80/)
 
-### Prerequisites for Mac
+The source code for the console app (running on the PC and connecting to the ATMega on USB): ['src/console' folder](src/z80/)
+
+The console is mainly developed for end users, to interact with the ATMega (until we don't have keyboard and display support, or if the user don't want to buy/attch separate devices to the board). However, during development you can also use the console as a debugger and you can also upload Z80 code using the console. However, to deploy code running on the ATMega, you need to use a programmer (see: [here](#atmega-programmer) )
+
+You can not use the console and the ATMega programmer in the same time. **Make sure you are disconnecting the USB port while you are using the programmer!**
+
+
+
+Prerequisites for Linux
+-----------------------
+
+TODO
+
+
+Prerequisites for Windows
+-----------------------
+
+TODO
+
+
+Prerequisites for Mac
+---------------------
 
 First, make sure you have xcode command line developer tools installed with:
 ```
@@ -82,30 +143,80 @@ export PATH="/usr/local/opt/avr-gcc@11/bin:$PATH"
 export AVRGCC_LDFLAGS="-L/usr/local/opt/avr-gcc@11/lib"
 ```
 
+
+(Optional) Configuring USB HWID
+-------------------------------
+
+You can program the MCP2221A chip, setting the HWID (Vendor ID: 0x1209, Product ID: 0x80A0) of the USB device. We 'registered' an open USB HWID in [pid.codes](https://pid.codes/). This is not mandatory, you can also use the MCP2221A chip with factory default HWID, but in this case the console won't auto-detect the port and you need to select the correct port manually from a list each time you start the console.
+
+**Prerequisites (python):**
+
+```
+pip3 install mcp2221==1.0.0
+pip3 install hidapi==0.10.1
+```
+
+**Prerequisites (C lib):**
+
+The mcp2221 python library is using the hidapi library, which got merged into libusb in 2019. So depending on the age of your OS, you might need to install libhidapi or libusb. 
+
+For me on Mac with up-to-date homebrew, this worked: `brew install hidapi`
+
+According to the project page (https://github.com/trezor/cython-hidapi) for linux this one should work at the moment:
+`sudo apt-get install python-dev libusb-1.0-0-dev libudev-dev`
+
+
+**Setting the HWID for the board**
+
+Use the following command to set the Vendor ID, Product ID and Product Description on the board: `./src/console/program_hwid.py`
+
+**Reseting the HWID**
+
+Use the following command to reset the Vendor ID, Product ID and Product Description on the board to the MPC2221A factory defaults:  `./src/console/program_hwid.py --reset`
+
+
+
+ATMega Programmer
+-----------------
+
+To update the code running on the ATMega, we are using the open source UABAsp programmer (https://www.fischl.de/usbasp/). It comes with an ISP 10 connector. You need to connect the programmer to the ATMega ports indicated in the schema (RESET and PB3, PB6, PB7). Also you need to connect the 5V and GND from the programmer to the board, basically using the Programmer as a power source while you are programing the board. You can not use the console and the ATMega programmer in the same time. **Make sure you are disconnecting the USB port while you are using the programmer!**
+
+The following photo shows how to connect the ISP 10 connector to your breadboard:
+
+![](docs/ISP-10-pin.jpg?raw=true "USBAsp programmer connector")
+ 
+
 ### Initializing ATMega clock
 
 ATMega shipped with internal 8MHz clock enabled and the clock prescaler set to 8, resulting in 1 MHz clock speed. In the code we assume you wired the 20 MHz crystal to ATMega already. To configure the external crystal oscillator to be used, you need to set the fuses on ATMega once before programming it. (useful online fuse bit calculator: http://eleccelerator.com/fusecalc/fusecalc.php?chip=atmega324pa)
+
+**Make sure you are disconnecting the USB port while you are using the programmer to change the ATMega clock speed!**
 
 Use the following command (from the `src/atmega` folder) to set the fuses to the full 20MHz speed: `make atmega_fuse_init`
 
 If you want to rollback the factory defaults (1MHz internal clock), use: `make atmega_fuse_factory_reset`
 
 
-### Building the and deploying the code to the board
+### Deploying the ATMega code
 
-First build the Z80 code:
-```
-cd src/z80
-
-# TODO
-```
-
-Then build the atmega code and flash ATMega. Note, the ATMega flash will also contain the Z80 code, which will be copied into the Z80 RAM during startup.
+Below it is shown how can you build the atmega code and flash it to ATMega. Note, the ATMega flash will not contain the Z80 'ROM code'. The Z80 code can be copied to ATMega by using the console app. **Make sure you are disconnecting the USB port while you are using the programmer!**
 ```
 cd src/atmega
 make
 make program
 ```
 
-## License
+
+Deploying the Z80 ROM code
+--------------------------
+
+The memory will be initialized on startup by the ATMega chip, copying the Z80 'ROM' into the memory from the ATMega flash. To update Z80 ROM, you don't need an AVR Programmer, you can use the console to uppload the new ROM file to ATMega.
+
+```
+TODO
+```
+
+
+License
+=======
 This is an open project (licensed under BSD-3). Use it for free, just don't point fingers / blame us ;)
