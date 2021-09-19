@@ -5,10 +5,10 @@ $Descr A3 16535 11693
 encoding utf-8
 Sheet 1 1
 Title "ATMega-Z80"
-Date "2021-09-13"
-Rev "V0.4"
+Date "2021-09-19"
+Rev "V0.5"
 Comp "https://github.com/symat/atmega-z80"
-Comment1 "Open project, licensed under BSD-3."
+Comment1 "Open project, licensed under BSD-3 and CERN-OHL-P."
 Comment2 "5V, 512 KB banked memory, USB, SPI and I2C connection. User led / button."
 Comment3 "20MHz ATMega chip for IO integration, ROM, boot loader, 10MHz CPU clock generator, etc."
 Comment4 "Yet another Z80 8bit hobby computer."
