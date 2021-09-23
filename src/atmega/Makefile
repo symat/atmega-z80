@@ -1,11 +1,14 @@
 # expecting the AVRGCC_LDFLAGS set to your avr-gcc/lib folder
 
 MCU=atmega324pa
+CLOCK_FREQ=20000000
 PROGRAMMER=usbasp
-CFLAGS=-g -Wall -mcall-prologues -mmcu=$(MCU) -Os
+
+CFLAGS=-g -Wall -mmcu=$(MCU) -Os -std=c99 -DF_CPU=$(CLOCK_FREQ)
 LDFLAGS=-Wl,-gc-sections -Wl,-relax $(AVRGCC_LDFLAGS)
 CC=avr-gcc
-TARGET=main
+
+TARGET=blinky
 
 all: $(TARGET).hex
 
