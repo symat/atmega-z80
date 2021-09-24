@@ -86,25 +86,14 @@ static void console_io_handler() {
     // TODO
 }
 
-static void user_io_handler() {
-    if (PIND & (1 << Z80_WR)) {
-        // It's an input request
-
+static void user_io_handler(uint8_t input_request) {
+    if (input_request) {
         // Acquire data bus
         DDRA = 0b11111111;
         // Put switch status on the bus
-        PORTA = !(PORTD & (1 << USER_LED_SWITCH));
-
-        signal_io_complete();
-        wait_z80_read_complete();
-
-        // Release data bus
-        PORTA = 0b11111111;
-        DDRA = 0b00000000;
+        PORTA = (PORTD & (1 << USER_LED_SWITCH)) == 0;
 
     } else {
-        // It's an output request
-
         // Read IO data from data bus
         const uint8_t cmd = PINA;
         switch (cmd) {
@@ -143,18 +132,34 @@ static void user_io_handler() {
 ISR(PCINT2_vect) {
     // Read the IO port address from address bus
     const uint8_t io_port = PINB & 0b00001111;
+    // Determine direction of request
+    const uint8_t input_request = (PIND & (1 << Z80_RD)) == 0;
 
     switch (io_port) {
         case 0: // Console
-            console_io_handler();
+            console_io_handler(input_request);
             break;
 
         case 1: // User switch / LED
-            user_io_handler();
+            user_io_handler(input_request);
             break;
     }
-    
+
+    // Signal bus request
+    PORTC &= ~(1 << BUSRQ);
     signal_io_complete();
+    // Wait for Z80 to release the bus
+    while (PINC & (1 << BUSACK)) {}
+
+    if (input_request) {
+        // It's an input request so
+        // release data bus and re-enable pull-ups
+        PORTA = 0b11111111;
+        DDRA = 0b00000000;
+    }
+
+    // Release bus
+    PORTC |= (1 << BUSRQ);
 }
 
 static void setup_usart() {
@@ -179,12 +184,12 @@ static void setup_usart() {
 }
 
 static void bus_request() {
-    PORTC |= (1 << BUSRQ);
-    while (PINC & (1 << BUSACK)) {};
+    PORTC &= ~(1 << BUSRQ);
+    while (PINC & (1 << BUSACK)) {}
 }
 
 INLINE static void bus_release() {
-    PORTC &= ~(1 << BUSRQ);
+    PORTC |= (1 << BUSRQ);
 }
 
 static void set_memory_bank(uint8_t bank) {
@@ -274,10 +279,7 @@ INLINE static void disable_z80_cpu() {
     PORTD |= (1 << Z80_RESET);
 }
 
-static void start_z80_clock() {
-    // Set timer counter to zero
-    TCNT2 = 0;
-
+static void setup_z80_clock() {
     // Set output compare to zero. This will give us
     // a frequency of f_clk / [2N * (1 + OCR2A)] = f_clk / 2, where
     // N = prescaling factor (=1)
@@ -292,18 +294,24 @@ static void start_z80_clock() {
            | (1 << WGM21)    // CTC mode (bits 1-0)
            | (0 << WGM20);
 
-    // Setting up this regsiter will start the timer
     TCCR2B = (0 << FOC2A)    // Disable force output compare A
            | (0 << FOC2B)    // Disable force output compare B
            | (0 << WGM22)    // CTC mode (bit 2)
-           | (0 << CS22)     // Use system clock without prescaler
+           | (0 << CS22)     // No clock source (timer is stopped)
            | (0 << CS21)
-           | (1 << CS20);
+           | (0 << CS20);
+}
+
+static void start_z80_clock() {
+    TCCR2B |= (0 << CS22)     // Use system clock without prescaler (/1)
+           |  (0 << CS21)
+           |  (1 << CS20);
 }
 
 INLINE static void stop_z80_clock() {
-    // Disconnect OC2A from port PD7
-    TCCR2A &= ~((1 << COM2A1) | (1 << COM2A0));
+    TCCR2B &= ~((1 << CS22)     // No clock source (timer is stopped)
+           |    (1 << CS21)
+           |    (1 << CS20));
 }
 
 INLINE static uint8_t usart_recv_8() {
@@ -328,8 +336,8 @@ INLINE static void usart_send_8(uint8_t data) {
     UDR0 = data;
 }
 
-static void upload_block(const uint8_t *block, uint16_t block_size) {
-    while (block_size > 0) {
+static void upload_block(const uint8_t *block, uint8_t block_size) {
+    while (--block_size) {
         // Wait for an IO request from Z80
         while (PINC & (1 << WAIT)) {}
 
@@ -345,8 +353,6 @@ static void upload_block(const uint8_t *block, uint16_t block_size) {
         // Release data bus
         DDRA = 0b00000000;
         PORTA = 0b11111111;
-
-        block_size--;
     }
 }
 
@@ -375,7 +381,7 @@ static uint8_t upload_z80_binary_from_usart() {
         }
 
         if (checksum_recv == checksum_calc) {
-            upload_block(read_buffer, 256);
+            upload_block(read_buffer, 0);
             if (binary_size == chunk_size) {
                 // Immediately request bus access after uploading the last chunk
                 // to prevent the Z80 to execute code
@@ -416,7 +422,8 @@ int main() {
     
     setup_pins();
     setup_usart();
-    set_memory_bank(0);
+    setup_z80_clock();
+    set_memory_bank(2);
 
     for(;;) {
         const uint8_t command = usart_recv_8();
