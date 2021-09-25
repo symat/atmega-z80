@@ -2,26 +2,64 @@
 #include <avr/interrupt.h>
 #include <stdint.h>
 
-#define INLINE __attribute__((always_inline)) inline
-
 #define USART_BAUD_RATE 9600
 
-#define BUSRQ PC3
-#define BUSACK PC4
-#define WAIT PC5
-#define WAIT_RESET PC6
-#define CHANGE_BANK_ADDR PC7
+#define PORT_DATA_BUS PORTA
+#define DDR_DATA_BUS DDRA
+#define PIN_DATA_BUS PINA
 
-#define USER_LED_SWITCH PD2
-#define Z80_RD PD3
-#define Z80_WR PD4
-#define Z80_MREQ PD5
-#define Z80_RESET PD6
+#define PORT_ADDRESS_BUS PORTB
+#define DDR_ADDRESS_BUS DDRB
+#define PIN_ADDRESS_BUS PINB
+
+#define PORT_SIG1 PORTC
+#define DDR_SIG1 DDRC
+#define PIN_SIG1 PINC
+
+#define PORT_SIG2 PORTD
+#define DDR_SIG2 DDRD
+#define PIN_SIG2 PIND
+
+#define BUSRQ_SIG1 PC3
+#define BUSACK_SIG1 PC4
+#define WAIT_SIG1 PC5
+#define WAIT_RESET_SIG1 PC6
+#define CHANGE_BANK_ADDR_SIG1 PC7
+
+#define USER_LED_SWITCH_SIG2 PD2
+#define RD_SIG2 PD3
+#define WR_SIG2 PD4
+#define MREQ_SIG2 PD5
+#define RESET_SIG2 PD6
+
+#define MEM_OE_SIG2 RD_SIG2
+#define MEM_WE_SIG2 WR_SIG2
+#define MEM_CE_SIG2 MREQ_SIG2
+
+#define INLINE static __attribute__((always_inline)) inline
 
 static const uint8_t bootloader_code[] = {
     0xAF, 0x4F, 0xED, 0x50, 0x21, 0x00, 0x01, 0x47,
     0xED, 0xB2, 0x15, 0x20, 0xFB, 0xC3, 0x00, 0x01,
 };
+
+INLINE void acquire_data_bus() {    
+    DDR_DATA_BUS = 0b11111111;
+}
+
+INLINE void release_data_bus() {
+    PORT_DATA_BUS = 0b11111111;
+    DDR_DATA_BUS = 0b00000000;
+}
+
+INLINE void acquire_address_bus() {
+    DDR_ADDRESS_BUS |= 0b00001111;
+}
+
+INLINE void release_address_bus() {
+    PORT_ADDRESS_BUS |= 0b00001111;
+    DDR_ADDRESS_BUS &= 0b11110000;
+}
 
 static void setup_pins() {
     // PA0 - PA7 - Data bus D0 - D7
@@ -35,30 +73,34 @@ static void setup_pins() {
     PORTB |= 0b00001111;
 
     /*
+     *  SIG1 group
+     *
      *  PC0 - I2C SCL (input, pull-up)
      *  PC1 - I2C SDA (input, pull-up)
-     *  PC2 - Z80 #INT line (output, high)
-     *  PC3 - Z80 #BUSRQ line (output, high)
-     *  PC4 - Z80 #BUSACK line (input, no pull-up)
-     *  PC5 - Z80 #WAIT line (output, high)
+     *  PC2 - #INT line (output, high)
+     *  PC3 - #BUSRQ line (output, high)
+     *  PC4 - #BUSACK line (input, no pull-up)
+     *  PC5 - #WAIT line (input, no pull-up)
      *  PC6 - #WAIT_RESET line (output, high)
      *  PC7 - CHANGE_BANK_ADDR line (output, low)
      */
-    DDRC = 0b11001100;
-    PORTC = 0b01101111;
+    DDR_SIG1 = 0b11001100;
+    PORT_SIG1 = 0b01001111;
 
     /*
-    *  PD0 - USART RxD (input, pull-up)
-    *  PD1 - USART TxD (output, high)
-    *  PD2 - User switch (input, pull-up)
-    *  PD3 - Z80 #RD (input, pull-up)
-    *  PD4 - Z80 #WR (input, pull-up)
-    *  PD5 - Z80 #MREQ (input, pull-up)
-    *  PD6 - Z80 #RESET (output, low)
-    *  PD7 - Z80 #CLK (output, high)
-    */
-    DDRD = 0b11000010;
-    PORTD = 0b10111111;
+     *  SIG2 group
+     *
+     *  PD0 - USART RxD (input, pull-up)
+     *  PD1 - USART TxD (output, high)
+     *  PD2 - User switch (input, pull-up)
+     *  PD3 - #RD (input, pull-up)
+     *  PD4 - #WR (input, pull-up)
+     *  PD5 - #MREQ (input, pull-up)
+     *  PD6 - #RESET (output, low)
+     *  PD7 - #CLK (output, high)
+     */
+    DDR_SIG2 = 0b11000010;
+    PORT_SIG2 = 0b10111111;
 
     // Interrupt request on falling edge of INT2
     EICRA = (1 << ISC21)
@@ -72,14 +114,14 @@ static void setup_pins() {
     PCMSK2 |= (1 << PCINT21);
 }
 
- INLINE static void signal_io_complete() {
-    // Pulse WAIT_RESET line
-    PINC |= (1 << WAIT_RESET);
-    PINC |= (1 << WAIT_RESET);
+ INLINE void signal_io_complete() {
+    // Pulse #WAIT_RESET line
+    PIN_SIG1 |= (1 << WAIT_RESET_SIG1);
+    PIN_SIG1 |= (1 << WAIT_RESET_SIG1);
 }
 
-INLINE static void wait_z80_read_complete() {
-    while (!(PIND & (1 << Z80_RD))) {}
+INLINE void wait_z80_read_complete() {
+    while (!(PIN_SIG2 & (1 << RD_SIG2))) {}
 }
 
 static void console_io_handler() {
@@ -88,52 +130,51 @@ static void console_io_handler() {
 
 static void user_io_handler(uint8_t input_request) {
     if (input_request) {
-        // Acquire data bus
-        DDRA = 0b11111111;
-        // Put switch status on the bus
-        PORTA = (PORTD & (1 << USER_LED_SWITCH)) == 0;
+        acquire_data_bus();
+        // Put switch status on data bus
+        PORT_DATA_BUS = (PIN_SIG2 & (1 << USER_LED_SWITCH_SIG2)) == 0;
 
     } else {
         // Read IO data from data bus
-        const uint8_t cmd = PINA;
+        const uint8_t cmd = PIN_DATA_BUS;
         switch (cmd) {
             case 0: // Disable LED
                 // Check if LED mode is selected
-                if (DDRD & (1 << USER_LED_SWITCH)) {
-                    PORTD |= (1 << USER_LED_SWITCH);
+                if (DDR_SIG2 & (1 << USER_LED_SWITCH_SIG2)) {
+                    PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 }
                 break;
 
             case 1: // Enable LED
                 // Check if LED mode is selected
-                if (DDRD & (1 << USER_LED_SWITCH)) {
-                    PORTD &= ~(1 << USER_LED_SWITCH);    
+                if (DDR_SIG2 & (1 << USER_LED_SWITCH_SIG2)) {
+                    PORT_SIG2 &= ~(1 << USER_LED_SWITCH_SIG2);    
                 }
 
             case 2: // Select LED mode
                 // Select output mode on USER_LED_SWITCH line
-                DDRD |= (1 << USER_LED_SWITCH);
+                DDR_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 // Disable LED
-                PORTD |= (1 << USER_LED_SWITCH);
+                PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 break;
 
             case 3: // Select switch mode
                 // Select input mode on USER_LED_SWITCH line
-                DDRD &= ~(1 << USER_LED_SWITCH);
+                DDR_SIG2 &= ~(1 << USER_LED_SWITCH_SIG2);
                 // Activate pull-up
-                PORTD |= (1 << USER_LED_SWITCH);
+                PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 break;
         }
     }
 }
 
-// IO request handler.
-// Will be called on the falling edge of #WAIT.
+// IO request handler
+// Will be called on the falling edge of #WAIT
 ISR(PCINT2_vect) {
     // Read the IO port address from address bus
-    const uint8_t io_port = PINB & 0b00001111;
+    const uint8_t io_port = PIN_ADDRESS_BUS & 0b00001111;
     // Determine direction of request
-    const uint8_t input_request = (PIND & (1 << Z80_RD)) == 0;
+    const uint8_t input_request = (PIN_SIG2 & (1 << RD_SIG2)) == 0;
 
     switch (io_port) {
         case 0: // Console
@@ -146,20 +187,17 @@ ISR(PCINT2_vect) {
     }
 
     // Signal bus request
-    PORTC &= ~(1 << BUSRQ);
+    PORT_SIG1 &= ~(1 << BUSRQ_SIG1);
     signal_io_complete();
     // Wait for Z80 to release the bus
-    while (PINC & (1 << BUSACK)) {}
+    while (PIN_SIG1 & (1 << BUSACK_SIG1)) {}
 
     if (input_request) {
-        // It's an input request so
-        // release data bus and re-enable pull-ups
-        PORTA = 0b11111111;
-        DDRA = 0b00000000;
+        release_data_bus();
     }
 
-    // Release bus
-    PORTC |= (1 << BUSRQ);
+    // Signal bus release
+    PORT_SIG1 |= (1 << BUSRQ_SIG1);
 }
 
 static void setup_usart() {
@@ -183,32 +221,29 @@ static void setup_usart() {
            | (0 << UCPOL0);  // clock polarity
 }
 
-static void bus_request() {
-    PORTC &= ~(1 << BUSRQ);
-    while (PINC & (1 << BUSACK)) {}
+INLINE void bus_request() {
+    PORT_SIG1 &= ~(1 << BUSRQ_SIG1);
+    while (PIN_SIG1 & (1 << BUSACK_SIG1)) {}
 }
 
-INLINE static void bus_release() {
-    PORTC |= (1 << BUSRQ);
+INLINE void bus_release() {
+    PORT_SIG1 |= (1 << BUSRQ_SIG1);
 }
 
 static void set_memory_bank(uint8_t bank) {
-    // Acquire data bus
-    DDRA = 0b11111111;
+    acquire_address_bus();
+    
     // Put bank address on data bus
-    PORTA = bank;
+    PORT_DATA_BUS = bank;
 
     // Pulse CHANGE_BANK_ADDR
     // One clock cycle (~50ns) should be long enough.
     //
     // See SN74HC373 datasheet page 4
-    PINC |= (1 << CHANGE_BANK_ADDR);
-    PINC |= (1 << CHANGE_BANK_ADDR);
+    PIN_SIG1 |= (1 << CHANGE_BANK_ADDR_SIG1);
+    PIN_SIG1 |= (1 << CHANGE_BANK_ADDR_SIG1);
 
-    // Set data bus to high (will enable pull-ups on release)
-    PORTA = 0b11111111;
-    // Release data bus
-    DDRA = 0b00000000;
+    release_data_bus();
 }
 
 static void switch_memory_bank(uint8_t bank) {
@@ -220,63 +255,62 @@ static void switch_memory_bank(uint8_t bank) {
 static void upload_bootloader() {
     const uint8_t bootloader_size = sizeof(bootloader_code);
 
-    // Acquire data bus
-    DDRA = 0b11111111;
-    // Acquire address bus
-    DDRB |= 0b1111;
-
-    // Acquire of #WR and #MREQ (#CE on memory chip) lines
-    DDRD |= (1 << Z80_WR) | (1 << Z80_MREQ);
-
-    // Set #MREQ to low to enable memory chip.
-    // This is safe because #OE is pulled high by the internal pull-up
-    // the entire time so the memory chip won't drive the data bus
-    // while #WR is high.
-    //
     // See AS6C4008 datasheet page 3
-    PORTD &= ~(1 << Z80_MREQ);
 
-    // Set #WR to high
-    PORTD |= (1 << Z80_WR);
+    // Acquire #OE, #WE and #CE lines of memory IC
+    DDR_SIG2 |= (1 << MEM_OE_SIG2)
+             |  (1 << MEM_WE_SIG2)
+             |  (1 << MEM_CE_SIG2);
+
+    PORT_SIG2 |= (1 << MEM_OE_SIG2)  // Set #OE high to ensure that the memory IC won't drive the data bus
+              |  (1 << MEM_WE_SIG2)  // Set #WE high to ensure that no data will be written to memory by accedent
+              |  (1 << MEM_CE_SIG2); // Set #CE to high to disable memory IC
+
+    acquire_data_bus();
+    acquire_address_bus();
+
+    // Enable memory IC
+    PORT_SIG2 &= ~(1 << MEM_CE_SIG2);
+
     for (uint8_t i = 0; i < bootloader_size; i++) {
         // Put next byte on the data bus
-        PORTA = bootloader_code[i];
+        PORT_DATA_BUS = bootloader_code[i];
         // Put address on the address bus
-        PORTB = (i & 0b00001111);
+        PORT_ADDRESS_BUS = (i & 0b00001111);
 
-        // Pulse #WR
+        // Pulse #WE
         // The width of a write pulse must be at least 45ns long.
         // With a clock speed of 20Mhz one cycle is 50ns long so no
-        // additional delay is required before setting the #WR line
-        // to high state again.
+        // additional delay is required before setting the #WE line
+        // high again.
         //
         // See AS6C4008 datasheet pages 4 and 6
-        PIND |= (1 << Z80_WR);
-        PIND |= (1 << Z80_WR);
+        PIN_SIG2 |= (1 << MEM_WE_SIG2);
+        PIN_SIG2 |= (1 << MEM_WE_SIG2);
     }
 
-    // Set #WR and #MREQ to high (will enable pull-ups on release)
-    PORTD |= (1 << Z80_WR) | (1 << Z80_MREQ);
-    // Release #WR and #MREQ
-    DDRD &= ~((1 << Z80_WR) | (1 << Z80_MREQ));
+    release_address_bus();
+    release_data_bus();
 
-    // Set address bus to high (will enable pull-ups on release)
-    PORTB |= 0b00001111;
-    // Release address bus
-    DDRB &= 0b11110000;
-    
-    // Set data bus to high (will enable pull-ups on release)
-    PORTA = 0b11111111;
-    // Release data bus
-    DDRA = 0b00000000;
+    // Set #OE, #WE, #CE lines to high (will enable pull-up on release)
+    PORT_SIG2 |= (1 << MEM_OE_SIG2)
+              |  (1 << MEM_WE_SIG2)
+              |  (1 << MEM_CE_SIG2);
+
+    // Release #OE, #WE, #CE lines
+    DDR_SIG2 &= ~(
+          (1 << MEM_OE_SIG2)
+        | (1 << MEM_WE_SIG2)
+        | (1 << MEM_CE_SIG2)
+    );
 }
 
-INLINE static void enable_z80_cpu() {
-    PORTD &= ~(1 << Z80_RESET);
+INLINE void enable_z80_cpu() {
+    PORT_SIG2 |= (1 << RESET_SIG2);
 }
 
-INLINE static void disable_z80_cpu() {
-    PORTD |= (1 << Z80_RESET);
+INLINE void disable_z80_cpu() {
+    PORT_SIG2 &= ~(1 << RESET_SIG2);
 }
 
 static void setup_z80_clock() {
@@ -302,24 +336,24 @@ static void setup_z80_clock() {
            | (0 << CS20);
 }
 
-static void start_z80_clock() {
+INLINE void start_z80_clock() {
     TCCR2B |= (0 << CS22)     // Use system clock without prescaler (/1)
            |  (0 << CS21)
            |  (1 << CS20);
 }
 
-INLINE static void stop_z80_clock() {
+INLINE void stop_z80_clock() {
     TCCR2B &= ~((1 << CS22)     // No clock source (timer is stopped)
            |    (1 << CS21)
            |    (1 << CS20));
 }
 
-INLINE static uint8_t usart_recv_8() {
+INLINE uint8_t usart_recv_8() {
     while (!(UCSR0A & (1 << RXC0))) {}
     return UDR0;
 }
 
-INLINE static uint16_t usart_recv_16() {
+INLINE uint16_t usart_recv_16() {
     const uint8_t h = usart_recv_8();
     return (h << 8) + usart_recv_8();
 }
@@ -331,29 +365,28 @@ static void usart_recv_block(uint8_t *dst, uint8_t bytes) {
     }
 }
 
-INLINE static void usart_send_8(uint8_t data) {
+INLINE void usart_send_8(uint8_t data) {
     while (!(UCSR0A & (1 << UDRE0))) {}
     UDR0 = data;
 }
 
 static void upload_block(const uint8_t *block, uint8_t block_size) {
-    while (--block_size) {
+    do {
         // Wait for an IO request from Z80
-        while (PINC & (1 << WAIT)) {}
+        while (PIN_SIG1 & (1 << WAIT_SIG1)) {}
 
-        // Put data on the data bus
-        DDRA = 0b11111111;
-        PORTA = *block++;
+        acquire_address_bus();
+        PORT_DATA_BUS = *block++;
 
+        // Signal bus request
+        PORT_SIG1 &= ~(1 << BUSRQ_SIG1);
         signal_io_complete();
-
-        // Wait for Z80 to finish reading
-        while(!(PIND & (1 << Z80_RD))) {}
-
-        // Release data bus
-        DDRA = 0b00000000;
-        PORTA = 0b11111111;
-    }
+        // Wait for Z80 to release the bus
+        while (PIN_SIG1 & (1 << BUSACK_SIG1)) {}
+        release_data_bus();
+        // Signal bus release
+        PORT_SIG1 |= (1 << BUSRQ_SIG1);
+    } while (--block_size);
 }
 
 static uint8_t upload_z80_binary_from_usart() {
