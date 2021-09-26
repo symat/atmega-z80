@@ -358,11 +358,12 @@ INLINE uint16_t usart_recv_16() {
     return (h << 8) + usart_recv_8();
 }
 
+// Reads 256 bytes if bytes == 0
 static void usart_recv_block(uint8_t *dst, uint8_t bytes) {
-    while (bytes) {
+    do {
         while (!(UCSR0A & (1 << RXC0))) {}
         *dst++ = UDR0;
-    }
+    } while (--bytes);
 }
 
 INLINE void usart_send_8(uint8_t data) {
@@ -370,12 +371,16 @@ INLINE void usart_send_8(uint8_t data) {
     UDR0 = data;
 }
 
-static void upload_block(const uint8_t *block, uint8_t block_size) {
+// Uploads 256 bytes if block_size == 0
+static void upload_block(const uint8_t *block, uint8_t block_size, uint8_t lock_bus) {
     do {
+        // Signal bus release from previous loop
+        PORT_SIG1 |= (1 << BUSRQ_SIG1);
+
         // Wait for an IO request from Z80
         while (PIN_SIG1 & (1 << WAIT_SIG1)) {}
 
-        acquire_address_bus();
+        acquire_data_bus();
         PORT_DATA_BUS = *block++;
 
         // Signal bus request
@@ -383,10 +388,14 @@ static void upload_block(const uint8_t *block, uint8_t block_size) {
         signal_io_complete();
         // Wait for Z80 to release the bus
         while (PIN_SIG1 & (1 << BUSACK_SIG1)) {}
+
         release_data_bus();
+    } while (--block_size);
+
+    if (!lock_bus) {
         // Signal bus release
         PORT_SIG1 |= (1 << BUSRQ_SIG1);
-    } while (--block_size);
+    }
 }
 
 static uint8_t upload_z80_binary_from_usart() {
@@ -399,35 +408,43 @@ static uint8_t upload_z80_binary_from_usart() {
     }
 
     // Upload block count
-    upload_block(&block_count, 1);
-    // Ready for receiving the blocks
+    upload_block(&block_count, 1, 0);
+    // Ready for receiving blocks
     usart_send_8(1);
 
     while (binary_size > 0) {
+        // chunk_size is one less than actual size
+        // to allow 256 byte sized chunks
         const uint8_t chunk_size = usart_recv_8();
-        usart_recv_block(read_buffer, chunk_size);
+        if (chunk_size > binary_size - 1) {
+            // Reject current block (invalid size)
+            usart_send_8(0);
+            return 0;
+        }
+
+        usart_recv_block(read_buffer, chunk_size + 1);
         const uint8_t checksum_recv = usart_recv_8();
 
         uint8_t checksum_calc = 0u;
-        for (int i = 0; i < chunk_size; i++) {
+        uint8_t i = chunk_size;
+        do {
             checksum_calc ^= read_buffer[i];
-        }
+        } while (i--);
 
         if (checksum_recv == checksum_calc) {
-            upload_block(read_buffer, 0);
-            if (binary_size == chunk_size) {
-                // Immediately request bus access after uploading the last chunk
-                // to prevent the Z80 to execute code
-                bus_request();
-            }
+            // Keep bus locked after last byte uploaded
+            upload_block(read_buffer, 0, binary_size - 1 == chunk_size);
+            // Acknowledge current block
             usart_send_8(1);
 
         } else {
+            // Reject current block (checksum failed)
             usart_send_8(0);
             return 0;
         }
 
         binary_size -= chunk_size;
+        binary_size--;
     }
 
     return 1;

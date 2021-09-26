@@ -48,7 +48,8 @@ def main():
             prog_range = chunk_size[pos : pos + chunk_size]
             chksum = functools.reduce(operator.xor, prog_range, 0)
 
-            p.write(struct.pack('!H', chunk_size))
+            # chunk_size sent is always one less to allow 256 byte sized chunks
+            p.write(struct.pack('!H', chunk_size - 1))
             p.write(prog_range)
             p.write(struct.pack('b', chksum))
 
