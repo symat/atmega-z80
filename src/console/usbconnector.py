@@ -1,4 +1,5 @@
 from serial.tools.list_ports import comports
+from serial import Serial
 import sys
 
 USB_VID = int("0x1209", base=16)
@@ -11,6 +12,21 @@ class ATMegaZ80UsbConnector:
             self.port = PortDetector().port
         else:
             self.port = port
+        
+        # the data bit, parity and stop bit settings are defined in 
+        # he MCP2221A data sheet, the chip only allows these values
+        self.data_bits = 8
+        self.parity = False
+        self.stop_bit = 1
+
+
+        with Serial(self.port, 19200, timeout=1) as ser:
+            ser.write(b'GET_LINE_CODING\n') 
+
+            #x = ser.read()          # read one byte
+            #s = ser.read(10)        # read up to ten bytes (timeout)
+            line = ser.readline()   # read a '\n' terminated line
+            print("response: " + line)
 
 
 class PortDetector:

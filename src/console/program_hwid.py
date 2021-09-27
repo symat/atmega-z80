@@ -94,7 +94,10 @@ mcp2221.WriteFlash(MCP2221.FLASH.USB_PRODUCT_DESCRIPTOR, new_desc_array)
 mcp2221.WriteFlash(MCP2221.FLASH.CHIP_SETTING, new_chip_settings)
 
 print()
-print("Done... Please reset the board for the changes to take place")
+print("Done... Reseting the device")
+
+mcp2221.Reset()
+print("Bye!")
 
 
 
