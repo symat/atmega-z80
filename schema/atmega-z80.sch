@@ -472,8 +472,6 @@ Wire Wire Line
 Connection ~ 3950 10550
 Text Label 7850 8700 2    50   ~ 0
 #USER
-Text Label 8400 10850 2    50   ~ 0
-#USER
 Text GLabel 1400 3700 0    50   Input ~ 0
 Z80_ACTIVE_LED
 Text Label 3850 4100 0    50   ~ 0
@@ -2294,7 +2292,7 @@ L Device:C_Small C8
 U 1 1 618AC03B
 P 9100 9100
 F 0 "C8" H 8900 9150 50  0000 L CNN
-F 1 "0.1uF" H 8850 9000 50  0000 L CNN
+F 1 "0.33uF" H 8850 9000 50  0000 L CNN
 F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder" H 9100 9100 50  0001 C CNN
 F 3 "~" H 9100 9100 50  0001 C CNN
 	1    9100 9100
@@ -2633,19 +2631,16 @@ Wire Wire Line
 	10000 8200 12150 8200
 Wire Wire Line
 	10000 8300 12150 8300
-Text GLabel 8250 9900 2    50   Input ~ 0
+Text GLabel 8250 9450 2    50   Input ~ 0
 #USER_LED
 Wire Wire Line
-	8250 9900 8150 9900
+	8250 9450 8150 9450
 Wire Wire Line
 	6700 10850 6950 10850
 Wire Wire Line
 	6700 10850 6700 10300
-Connection ~ 8150 9900
 Wire Wire Line
-	8150 9900 8150 10850
-Wire Wire Line
-	8150 8700 8150 9900
+	8150 8700 8150 9450
 Text Notes 7450 8850 0    50   ~ 0
 (internal pull-up\n in ATMega)
 Wire Wire Line
@@ -2811,6 +2806,120 @@ F 3 "" H 14250 4550 50  0001 C CNN
 	1    14250 4550
 	0    -1   -1   0   
 $EndComp
+$Comp
+L Mechanical:MountingHole_Pad H1
+U 1 1 614CF04A
+P 900 8650
+F 0 "H1" H 1000 8699 50  0000 L CNN
+F 1 "TopLeft" H 1000 8608 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_DIN965_Pad" H 900 8650 50  0001 C CNN
+F 3 "~" H 900 8650 50  0001 C CNN
+	1    900  8650
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole_Pad H3
+U 1 1 614CFF48
+P 1550 8650
+F 0 "H3" H 1650 8699 50  0000 L CNN
+F 1 "TopRight" H 1650 8608 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_DIN965_Pad" H 1550 8650 50  0001 C CNN
+F 3 "~" H 1550 8650 50  0001 C CNN
+	1    1550 8650
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole_Pad H2
+U 1 1 614D03BD
+P 900 9100
+F 0 "H2" H 1000 9149 50  0000 L CNN
+F 1 "BottomLeft" H 1000 9058 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_DIN965_Pad" H 900 9100 50  0001 C CNN
+F 3 "~" H 900 9100 50  0001 C CNN
+	1    900  9100
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR01
+U 1 1 614D164C
+P 900 8750
+F 0 "#PWR01" H 900 8500 50  0001 C CNN
+F 1 "GND" H 900 8600 50  0000 C CNN
+F 2 "" H 900 8750 50  0001 C CNN
+F 3 "" H 900 8750 50  0001 C CNN
+	1    900  8750
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR02
+U 1 1 614D21D8
+P 900 9200
+F 0 "#PWR02" H 900 8950 50  0001 C CNN
+F 1 "GND" H 900 9050 50  0000 C CNN
+F 2 "" H 900 9200 50  0001 C CNN
+F 3 "" H 900 9200 50  0001 C CNN
+	1    900  9200
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR03
+U 1 1 614D26A2
+P 1550 8750
+F 0 "#PWR03" H 1550 8500 50  0001 C CNN
+F 1 "GND" H 1550 8600 50  0000 C CNN
+F 2 "" H 1550 8750 50  0001 C CNN
+F 3 "" H 1550 8750 50  0001 C CNN
+	1    1550 8750
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR04
+U 1 1 614D2B35
+P 1550 9200
+F 0 "#PWR04" H 1550 8950 50  0001 C CNN
+F 1 "GND" H 1550 9050 50  0000 C CNN
+F 2 "" H 1550 9200 50  0001 C CNN
+F 3 "" H 1550 9200 50  0001 C CNN
+	1    1550 9200
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole_Pad H4
+U 1 1 614D0773
+P 1550 9100
+F 0 "H4" H 1650 9149 50  0000 L CNN
+F 1 "BottomRight" H 1650 9058 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_DIN965_Pad" H 1550 9100 50  0001 C CNN
+F 3 "~" H 1550 9100 50  0001 C CNN
+	1    1550 9100
+	1    0    0    -1  
+$EndComp
+Wire Notes Line
+	600  9500 2200 9500
+Wire Notes Line
+	2200 8200 600  8200
+Wire Notes Line
+	2200 8200 2200 9500
+Wire Notes Line
+	600  8200 600  9500
+Text Notes 650  8350 0    79   ~ 0
+MOUNTING HOLES
+$Comp
+L Device:R R29
+U 1 1 61510E7E
+P 8150 10000
+F 0 "R29" H 8250 10000 50  0000 L CNN
+F 1 "1K" V 8150 9950 50  0000 L CNN
+F 2 "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder" V 8080 10000 50  0001 C CNN
+F 3 "~" H 8150 10000 50  0001 C CNN
+	1    8150 10000
+	1    0    0    1   
+$EndComp
+Wire Wire Line
+	8150 9450 8150 9850
+Connection ~ 8150 9450
+Wire Wire Line
+	8150 10150 8150 10850
 Wire Bus Line
 	8550 2100 8550 3250
 Wire Bus Line

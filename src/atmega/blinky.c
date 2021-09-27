@@ -1,6 +1,3 @@
-#define F_CPU 20000000    // AVR clock frequency in Hz, used by util/delay.h
-
-
 #include <avr/io.h>
 #include <util/delay.h>
   
