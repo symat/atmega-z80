@@ -36,12 +36,24 @@
 #define MEM_WE_SIG2 WR_SIG2
 #define MEM_CE_SIG2 MREQ_SIG2
 
+#define IO_PORT_CONSOLE 0
+#define IO_PORT_USER_LED_SWITCH 1
+#define IO_PORT_MEMORY_BANK 2
+
+#define IO_USER_DISABLE_LED 0
+#define IO_USER_ENABLE_LED 1
+#define IO_USER_SELECT_LED_MODE 2
+#define IO_USER_SELECT_SWITCH_MODE 3
+
 #define INLINE static __attribute__((always_inline)) inline
 
 static const uint8_t bootloader_code[] = {
     0xAF, 0x4F, 0xED, 0x50, 0x21, 0x00, 0x01, 0x47,
     0xED, 0xB2, 0x15, 0x20, 0xFB, 0xC3, 0x00, 0x01,
 };
+
+// The currently selected memory bank
+uint8_t memory_bank;
 
 INLINE void acquire_data_bus() {    
     DDR_DATA_BUS = 0b11111111;
@@ -62,15 +74,15 @@ INLINE void release_address_bus() {
 }
 
 static void setup_pins() {
-    // PA0 - PA7 - Data bus D0 - D7
+    // Data bus D0 - D7
     // Enable pull-ups
-    DDRA = 0b00000000;
-    PORTA = 0b11111111;
+    DDR_DATA_BUS = 0b00000000;
+    PORT_DATA_BUS = 0b11111111;
 
-    // PB0 - PB3 - Address bus A0 - A3
+    // Address bus A0 - A3
     // Enable pull-ups
-    DDRB = 0b00000000;
-    PORTB |= 0b00001111;
+    DDR_ADDRESS_BUS &= 0b11110000;
+    PORT_ADDRESS_BUS |= 0b00001111;
 
     /*
      *  SIG1 group
@@ -124,47 +136,69 @@ INLINE void wait_z80_read_complete() {
     while (!(PIN_SIG2 & (1 << RD_SIG2))) {}
 }
 
-static void console_io_handler() {
-    // TODO
+static void console_io_handler(uint8_t input_request) {
+    if (input_request) {
+        // TODO
+
+    } else {
+        // Send one character via USART
+        UDR0 = PIN_DATA_BUS;
+    }
 }
 
 static void user_io_handler(uint8_t input_request) {
     if (input_request) {
         acquire_data_bus();
-        // Put switch status on data bus
+        // Put led / switch status on data bus
         PORT_DATA_BUS = (PIN_SIG2 & (1 << USER_LED_SWITCH_SIG2)) == 0;
 
     } else {
         // Read IO data from data bus
         const uint8_t cmd = PIN_DATA_BUS;
         switch (cmd) {
-            case 0: // Disable LED
+            case IO_USER_DISABLE_LED:
                 // Check if LED mode is selected
                 if (DDR_SIG2 & (1 << USER_LED_SWITCH_SIG2)) {
                     PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 }
                 break;
 
-            case 1: // Enable LED
+            case IO_USER_ENABLE_LED:
                 // Check if LED mode is selected
                 if (DDR_SIG2 & (1 << USER_LED_SWITCH_SIG2)) {
                     PORT_SIG2 &= ~(1 << USER_LED_SWITCH_SIG2);    
                 }
+                break;
 
-            case 2: // Select LED mode
+            case IO_USER_SELECT_LED_MODE:
                 // Select output mode on USER_LED_SWITCH line
                 DDR_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 // Disable LED
                 PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 break;
 
-            case 3: // Select switch mode
+            case IO_USER_SELECT_SWITCH_MODE:
                 // Select input mode on USER_LED_SWITCH line
                 DDR_SIG2 &= ~(1 << USER_LED_SWITCH_SIG2);
                 // Activate pull-up
                 PORT_SIG2 |= (1 << USER_LED_SWITCH_SIG2);
                 break;
         }
+    }
+}
+
+static void memory_bank_io_handler(uint8_t input_request) {
+    if (input_request) {
+        acquire_data_bus();
+        PORT_DATA_BUS = memory_bank;
+        
+    } else {
+        // New bank index is on data bus
+        memory_bank = PIN_DATA_BUS;
+
+        // Pulse CHANGE_BANK_ADDR
+        PIN_SIG1 |= (1 << CHANGE_BANK_ADDR_SIG1);
+        PIN_SIG1 |= (1 << CHANGE_BANK_ADDR_SIG1);
     }
 }
 
@@ -177,12 +211,16 @@ ISR(PCINT2_vect) {
     const uint8_t input_request = (PIN_SIG2 & (1 << RD_SIG2)) == 0;
 
     switch (io_port) {
-        case 0: // Console
+        case IO_PORT_CONSOLE:
             console_io_handler(input_request);
             break;
 
-        case 1: // User switch / LED
+        case IO_PORT_USER_LED_SWITCH:
             user_io_handler(input_request);
+            break;
+
+        case IO_PORT_MEMORY_BANK:
+            memory_bank_io_handler(input_request);
             break;
     }
 
@@ -231,7 +269,10 @@ INLINE void bus_release() {
 }
 
 static void set_memory_bank(uint8_t bank) {
-    acquire_address_bus();
+    // Save memory bank index
+    memory_bank = bank;
+
+    acquire_data_bus();
     
     // Put bank address on data bus
     PORT_DATA_BUS = bank;
