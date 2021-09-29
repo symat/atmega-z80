@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from usbconnector import ATMegaZ80UsbConnector
-import argparse, functools, operator, serial, struct
+import argparse, functools, operator, serial, struct, sys
 
 MAX_PROG_SIZE = 0x10000 - 256
 
@@ -59,5 +59,14 @@ def main():
                 return
 
             pos += chunk_size
+
+        # Read console output from Z80
+        while True:
+            ch = p.read()
+            # End of transmission check
+            if ch != 0x04:
+                sys.stdout.write(chr(ch))
+            else:
+                break
 
 main()

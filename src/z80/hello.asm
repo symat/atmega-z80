@@ -11,4 +11,5 @@ P_CON   EQU     0
         HALT
         
 MSG     DB      'Hello World!', $0D, $0A
+        DB      $04               ; End of transmission
 MSG_END
