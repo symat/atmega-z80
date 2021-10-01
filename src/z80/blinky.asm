@@ -16,9 +16,9 @@ LOOP    REPT 70
         NOP
         ENDM
         DEC B
-        JP NZ, LOOP
+        JR NZ, LOOP
         DEC D
-        JP NZ, SLEEP
+        JR NZ, SLEEP
         
         XOR 1           ; Toggle A
-        JP BLINK
+        JR BLINK

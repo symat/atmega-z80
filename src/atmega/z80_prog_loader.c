@@ -74,6 +74,11 @@ INLINE void release_address_bus() {
 }
 
 static void setup_pins() {
+    // Pull #RESET line down to prevent Z80
+    // to drive any lines during setup
+    DDR_SIG2 |= (1 << RESET_SIG2);
+    PORT_SIG2 &= ~(1 << RESET_SIG2);
+
     // Data bus D0 - D7
     // Enable pull-ups
     DDR_DATA_BUS = 0b00000000;
