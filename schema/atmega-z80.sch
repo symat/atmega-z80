@@ -2173,17 +2173,6 @@ Wire Wire Line
 	6450 8700 8150 8700
 Text Notes 3100 8450 0    50   ~ 0
 (internal pull-up in ATMega)
-$Comp
-L power:GND #PWR0150
-U 1 1 617B67AE
-P 1000 950
-F 0 "#PWR0150" H 1000 700 50  0001 C CNN
-F 1 "GND" V 1000 750 50  0000 C CNN
-F 2 "" H 1000 950 50  0001 C CNN
-F 3 "" H 1000 950 50  0001 C CNN
-	1    1000 950 
-	0    1    1    0   
-$EndComp
 Wire Wire Line
 	1850 1150 1850 4300
 Text Notes 4800 1150 0    50   ~ 0
@@ -2940,4 +2929,15 @@ Wire Bus Line
 	11900 2100 11900 3600
 Wire Bus Line
 	5250 2100 5250 5600
+$Comp
+L power:+5V #PWR0150
+U 1 1 61559FBB
+P 1000 950
+F 0 "#PWR0150" H 1000 800 50  0001 C CNN
+F 1 "+5V" V 1000 1150 50  0000 C CNN
+F 2 "" H 1000 950 50  0001 C CNN
+F 3 "" H 1000 950 50  0001 C CNN
+	1    1000 950 
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC

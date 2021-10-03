@@ -6,15 +6,13 @@ set(AVRDUDE_PROGRAMMER usbasp CACHE STRING "Programmer type")
 set(AVRDUDE_PORT "" CACHE STRING "Programmer port (empty for autodetect)")
 set(AVRDUDE_BAUD_RATE "" CACHE STRING "Programmer baud rate")
 
-set(SBASM_PATH "" CACHE PATH "Path to SB-Assember directory")
+set(PASMO_PATH "" CACHE PATH "Path to pasmo assember's directory")
 
 find_program(AVR_CC avr-gcc REQUIRED)
 find_program(AVR_CXX avr-g++ REQUIRED)
-find_program(AVR_OBJCOPY avr-objcopy bin REQUIRED)
-find_program(AVRDUDE avrdude HINTS bin REQUIRED)
-
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
-find_file(SBASM_PY sbasm.py PATHS ${SBASM_PATH} DOC "SB-Assembler" REQUIRED)
+find_program(AVR_OBJCOPY avr-objcopy REQUIRED)
+find_program(AVRDUDE avrdude REQUIRED)
+find_program(PASMO pasmo HINTS ${PASMO_PATH} REQUIRED)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR avr)
@@ -39,7 +37,7 @@ function(add_z80_executable EXECUTABLE_NAME ASM_FILE)
    add_custom_command(
       OUTPUT ${Z80_FILE}
       COMMAND
-         ${Python3_EXECUTABLE} ${SBASM_PY} ${CMAKE_CURRENT_SOURCE_DIR}/${ASM_FILE}
+         ${PASMO} --bin ${CMAKE_CURRENT_SOURCE_DIR}/${ASM_FILE} ${Z80_FILE}
       DEPENDS ${ASM_FILE}
    )
    
