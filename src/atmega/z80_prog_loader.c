@@ -369,7 +369,7 @@ static void setup_z80_clock() {
 
     TCCR2A = (0 << COM2A1)   // Toggle OC2A (PD7) on compare match
            | (1 << COM2A0)
-           | (0 << COM2B1)   // Disconnect OC2B
+           | (0 << COM2B1)   // Disconnect OC2B (PD6)
            | (0 << COM2B0)
            | (1 << WGM21)    // CTC mode (bits 1-0)
            | (0 << WGM20);
@@ -382,24 +382,82 @@ static void setup_z80_clock() {
            | (0 << CS20);
 }
 
-INLINE void start_z80_clock() {
+static void start_z80_clock() {
     TCCR2B |= (0 << CS22)     // Use system clock without prescaler (/1)
            |  (0 << CS21)
            |  (1 << CS20);
 }
 
-INLINE void stop_z80_clock() {
-    TCCR2B &= ~((1 << CS22)     // No clock source (timer is stopped)
+static void stop_z80_clock() {
+    TCCR2B &= ~((1 << CS22)   // No clock source (timer is stopped)
            |    (1 << CS21)
            |    (1 << CS20));
 }
 
-INLINE uint8_t usart_recv_8() {
-    while (!(UCSR0A & (1 << RXC0))) {}
+static void setup_usart_timeout_timer() {
+    // Use 16-bit timer/counter1
+    TCCR1A = (0 << COM1A1)    // Disconnect OC1A (PD5)
+           | (0 << COM1A0)
+           | (0 << COM1B1)    // Disconnect OC1B (PD4)
+           | (0 << COM1B0)
+           | (0 << WGM11)     // CTC mode (bits 1-0)
+           | (0 << WGM10);
+
+    TCCR1B = (0 << ICNC1)     // Disable input capture noise canceller
+           | (0 << ICES1)     // Input capture select falling edge (ignored)
+           | (0 << WGM13)     // CTC mode (bits 2-3)
+           | (1 << WGM12)
+           | (0 << CS12)      // No clock source (timer is stopped)
+           | (0 << CS11)
+           | (0 << CS10);
+}
+
+static void start_usart_timeout_timer(uint16_t bytes_expected) {
+    const uint8_t cycles_per_byte = F_CPU * 10UL / USART_BAUD_RATE / 1024UL + 1;
+    const uint16_t max_bytes = 65535UL / cycles_per_byte;
+
+    // Zero counter
+    TCNT1L = 0;
+    TCNT1H = 0;
+
+    // Set timeout counter
+    if (bytes_expected <= max_bytes) {
+        // Set counter according to bytes_expected
+        const uint16_t cnt = cycles_per_byte * bytes_expected;
+        OCR1AL = cnt & 0xFF;
+        OCR1AH = cnt >> 8;
+
+    } else {
+        // Set maximum counter value possible
+        OCR1AL = 0xFF;
+        OCR1AH = 0xFF;
+    }
+
+    // Clear timeout flag
+    TIFR1 |= (1 << OCF1A);
+
+    // Start timer
+    TCCR1B |= (1 << CS12)        // Use system clock with /1024 prescaler
+           |  (0 << CS11)
+           |  (1 << CS10);
+}
+
+static void stop_usart_timeout_timer() {
+    TCCR1B &= ~((1 << CS12)      // No clock source (timer is stopped)
+           |    (1 << CS11)
+           |    (1 << CS10));
+}
+
+static uint8_t usart_timed_out() {
+    return (TIFR1 & (1 << OCF1A)) > 0;
+}
+
+static uint8_t usart_recv_8() {
+    while (!(UCSR0A & (1 << RXC0)) && !(TIFR1 & (1 << OCF1A))) {}
     return UDR0;
 }
 
-INLINE uint16_t usart_recv_16() {
+static uint16_t usart_recv_16() {
     const uint8_t h = usart_recv_8();
     return (h << 8) + usart_recv_8();
 }
@@ -407,12 +465,12 @@ INLINE uint16_t usart_recv_16() {
 // Reads 256 bytes if bytes == 0
 static void usart_recv_block(uint8_t *dst, uint8_t bytes) {
     do {
-        while (!(UCSR0A & (1 << RXC0))) {}
+        while (!(UCSR0A & (1 << RXC0)) && !(TIFR1 & (1 << OCF1A))) {}
         *dst++ = UDR0;
-    } while (--bytes);
+    } while (--bytes && !(TIFR1 & (1 << OCF1A)));
 }
 
-INLINE void usart_send_8(uint8_t data) {
+void usart_send_8(uint8_t data) {
     while (!(UCSR0A & (1 << UDRE0))) {}
     UDR0 = data;
 }
@@ -446,8 +504,16 @@ static void upload_block(const uint8_t *block, uint8_t block_size, uint8_t lock_
 
 static uint8_t upload_z80_binary_from_usart() {
     uint8_t read_buffer[256];
+
+    setup_usart_timeout_timer();
     
+    start_usart_timeout_timer(2);
     uint16_t binary_size = usart_recv_16();
+    stop_usart_timeout_timer();
+    if (usart_timed_out()) {
+        return 0;
+    }
+
     uint8_t block_count = binary_size >> 8;
     if ((binary_size & 0xff) > 0) {
         block_count++;
@@ -461,15 +527,29 @@ static uint8_t upload_z80_binary_from_usart() {
     while (binary_size > 0) {
         // chunk_size is one less than actual size
         // to allow 256 byte sized chunks
+
+        start_usart_timeout_timer(1);
         const uint8_t chunk_size = usart_recv_8();
+        stop_usart_timeout_timer();
+        if (usart_timed_out()) {
+            return 0;
+        }
+
         if (chunk_size > binary_size - 1) {
             // Reject current block (invalid size)
             usart_send_8(0);
             return 0;
         }
 
+        // chunk_size is one less than actual size + 1 checksum byte
+        start_usart_timeout_timer((uint16_t)chunk_size + 2);
+        // chunk_size + 1 may overflow uint8_t but it's handled in usart_recv_block
         usart_recv_block(read_buffer, chunk_size + 1);
         const uint8_t checksum_recv = usart_recv_8();
+        stop_usart_timeout_timer();
+        if (usart_timed_out()) {
+            return 0;
+        }
 
         uint8_t checksum_calc = 0u;
         uint8_t i = chunk_size;
