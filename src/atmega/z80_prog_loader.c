@@ -448,12 +448,20 @@ static void stop_usart_timeout_timer() {
            |    (1 << CS10));
 }
 
-static uint8_t usart_timed_out() {
+INLINE uint8_t usart_rx_buffer_ready() {
+    return (UCSR0A & (1 << RXC0)) > 0;
+}
+
+INLINE uint8_t usart_tx_buffer_ready() {
+    return (UCSR0A & (1 << UDRE0)) > 0;
+}
+
+INLINE uint8_t usart_timed_out() {
     return (TIFR1 & (1 << OCF1A)) > 0;
 }
 
 static uint8_t usart_recv_8() {
-    while (!(UCSR0A & (1 << RXC0)) && !(TIFR1 & (1 << OCF1A))) {}
+    while (!usart_rx_buffer_ready() && !usart_timed_out()) {}
     return UDR0;
 }
 
@@ -465,13 +473,13 @@ static uint16_t usart_recv_16() {
 // Reads 256 bytes if bytes == 0
 static void usart_recv_block(uint8_t *dst, uint8_t bytes) {
     do {
-        while (!(UCSR0A & (1 << RXC0)) && !(TIFR1 & (1 << OCF1A))) {}
+        while (!usart_rx_buffer_ready() && !usart_timed_out()) {}
         *dst++ = UDR0;
-    } while (--bytes && !(TIFR1 & (1 << OCF1A)));
+    } while (--bytes && !usart_timed_out());
 }
 
-void usart_send_8(uint8_t data) {
-    while (!(UCSR0A & (1 << UDRE0))) {}
+static void usart_send_8(uint8_t data) {
+    while (!usart_tx_buffer_ready()) {}
     UDR0 = data;
 }
 
