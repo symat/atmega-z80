@@ -45,6 +45,13 @@
 #define IO_USER_SELECT_LED_MODE 2
 #define IO_USER_SELECT_SWITCH_MODE 3
 
+#define CMD_LOAD_Z80_BINARY_FROM_USART 1
+
+#define ERR_OK 0
+#define ERR_TIMEOUT 1
+#define ERR_INVALID_SIZE 2
+#define ERR_CHECKSUM_FAILED 3
+
 #define INLINE static __attribute__((always_inline)) inline
 
 static const uint8_t bootloader_code[] = {
@@ -519,7 +526,8 @@ static uint8_t upload_z80_binary_from_usart() {
     uint16_t binary_size = usart_recv_16();
     stop_usart_timeout_timer();
     if (usart_timed_out()) {
-        return 0;
+        usart_send_8(ERR_TIMEOUT);
+        return ERR_TIMEOUT;
     }
 
     uint8_t block_count = binary_size >> 8;
@@ -530,7 +538,7 @@ static uint8_t upload_z80_binary_from_usart() {
     // Upload block count
     upload_block(&block_count, 1, 0);
     // Ready for receiving blocks
-    usart_send_8(1);
+    usart_send_8(ERR_OK);
 
     while (binary_size > 0) {
         // chunk_size is one less than actual size
@@ -540,13 +548,17 @@ static uint8_t upload_z80_binary_from_usart() {
         const uint8_t chunk_size = usart_recv_8();
         stop_usart_timeout_timer();
         if (usart_timed_out()) {
-            return 0;
+            usart_send_8(ERR_TIMEOUT);
+            return ERR_TIMEOUT;
         }
 
-        if (chunk_size > binary_size - 1) {
+        if (chunk_size <= binary_size - 1) {
+            usart_send_8(ERR_OK);
+
+        } else {
             // Reject current block (invalid size)
-            usart_send_8(0);
-            return 0;
+            usart_send_8(ERR_INVALID_SIZE);
+            return ERR_INVALID_SIZE;
         }
 
         // chunk_size is one less than actual size + 1 checksum byte
@@ -556,7 +568,8 @@ static uint8_t upload_z80_binary_from_usart() {
         const uint8_t checksum_recv = usart_recv_8();
         stop_usart_timeout_timer();
         if (usart_timed_out()) {
-            return 0;
+            usart_send_8(ERR_TIMEOUT);
+            return ERR_TIMEOUT;
         }
 
         uint8_t checksum_calc = 0u;
@@ -569,29 +582,30 @@ static uint8_t upload_z80_binary_from_usart() {
             // Keep bus locked after last byte uploaded
             upload_block(read_buffer, 0, binary_size - 1 == chunk_size);
             // Acknowledge current block
-            usart_send_8(1);
+            usart_send_8(ERR_OK);
 
         } else {
             // Reject current block (checksum failed)
-            usart_send_8(0);
-            return 0;
+            usart_send_8(ERR_CHECKSUM_FAILED);
+            return ERR_CHECKSUM_FAILED;
         }
 
         binary_size -= chunk_size;
+        // chunk_size is one less than actual size
         binary_size--;
     }
 
-    return 1;
+    return ERR_OK;
 }
 
-static void load_from_usart_command() {
+static void load_z80_binary_from_usart_command() {
     stop_z80_clock();
     disable_z80_cpu();
     cli();
     upload_bootloader();
     enable_z80_cpu();
     start_z80_clock();
-    if (upload_z80_binary_from_usart()) {
+    if (upload_z80_binary_from_usart() == ERR_OK) {
         sei();
         bus_release();
 
@@ -612,8 +626,8 @@ int main() {
     for(;;) {
         const uint8_t command = usart_recv_8();
         switch (command) {
-            case 1:
-                load_from_usart_command();
+            case CMD_LOAD_Z80_BINARY_FROM_USART:
+                load_z80_binary_from_usart_command();
                 break;
         }
     }
