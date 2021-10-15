@@ -44,7 +44,7 @@ def main():
         p.write(struct.pack('!H', z80_prog_length))
 
         # Wait for ACK
-        err = p.read(1)
+        err = p.read()[0]
         if err != ERR_OK:
             print(f'The board has refused the upload (error code = {err})! Exiting...')
             return
@@ -60,7 +60,7 @@ def main():
             p.write(struct.pack('b', chunk_size - 1))
 
             # Wait for ACK
-            err = p.read(1)
+            err = p.read()[0]
             if err != ERR_OK:
                 print(f'The board has refused the next chunk (error code = {err})! Exiting...')
                 return
@@ -69,7 +69,7 @@ def main():
             p.write(struct.pack('b', chksum))
 
             # Wait for ACK
-            err = p.read(1)
+            err = p.read()[0]
             if err != ERR_OK:
                 print(f'Transfer error (error code = {err})! Exiting...')
                 return
@@ -78,7 +78,7 @@ def main():
 
         # Read console output from Z80
         while True:
-            ch = p.read()
+            ch = p.read()[0]
             # End of transmission check
             if ch != 0x04:
                 sys.stdout.write(chr(ch))
