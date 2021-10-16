@@ -10,15 +10,26 @@ START   LD A, 2
         
 BLINK   OUT (P_LED), A  ; Enable (A=1) / disable (A=0) LED
 
-        LD D, 100       ; Wait 4999700 cycles ~ 500ms @ 10MHz
-SLEEP   LD B, 170
-LOOP    REPT 70
+; Wait 5000000 cycles ~ 500ms @ 10MHz
+        LD D, 100       
+SLEEP   LD B, 171
+LOOP    REPT 69
         NOP
         ENDM
         DEC B
         JR NZ, LOOP
+        REPT 12
+        NOP
+        ENDM
         DEC D
         JR NZ, SLEEP
+; The previous loop sleeps "only" 4999795 cycles
+; so add 205 more :)
+        LD D, 12
+        LD D, 12        ; Intentional (+7 cycles)
+LOOP2   DEC D           
+        JR NZ, LOOP2
+        NOP
         
         XOR 1           ; Toggle A
         JR BLINK

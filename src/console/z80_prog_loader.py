@@ -8,6 +8,13 @@ MAX_PROG_SIZE = 0x10000 - 256
 BAUD_RATE = 9600
 CHUNK_SIZE = 256
 
+CMD_LOAD_Z80_BINARY_FROM_USART = 1
+
+ERR_OK = 0
+ERR_TIMEOUT = 1
+ERR_INVALID_SIZE = 2
+ERR_CHECKSUM_FAILED = 3
+
 def main():
     parser = argparse.ArgumentParser(description = 'Z80 program loader tool')
     parser.add_argument('prog', help='Z80 program file to load (binary format)')
@@ -31,14 +38,15 @@ def main():
     usb_connector = ATMegaZ80UsbConnector(args.port)
     with serial.Serial(usb_connector.port, BAUD_RATE) as p:
         # Send command code
-        p.write(struct.pack('b', 1))
+        p.write(struct.pack('b', CMD_LOAD_Z80_BINARY_FROM_USART))
 
         # Send program length as a 16bit unsigned value in network byte order (big-endian)
         p.write(struct.pack('!H', z80_prog_length))
 
         # Wait for ACK
-        if p.read(1) != 1:
-            print('The board has refused the upload! Exiting...')
+        err = p.read()[0]
+        if err != ERR_OK:
+            print(f'The board has refused the upload (error code = {err})! Exiting...')
             return
 
         # Send program in CHUNK_SIZE sized chunks
@@ -49,20 +57,28 @@ def main():
             chksum = functools.reduce(operator.xor, prog_range, 0)
 
             # chunk_size sent is always one less to allow 256 byte sized chunks
-            p.write(struct.pack('!H', chunk_size - 1))
+            p.write(struct.pack('b', chunk_size - 1))
+
+            # Wait for ACK
+            err = p.read()[0]
+            if err != ERR_OK:
+                print(f'The board has refused the next chunk (error code = {err})! Exiting...')
+                return
+                
             p.write(prog_range)
             p.write(struct.pack('b', chksum))
 
             # Wait for ACK
-            if p.read(1) != 1:
-                print('Transfer error! Exiting...')
+            err = p.read()[0]
+            if err != ERR_OK:
+                print(f'Transfer error (error code = {err})! Exiting...')
                 return
 
             pos += chunk_size
 
         # Read console output from Z80
         while True:
-            ch = p.read()
+            ch = p.read()[0]
             # End of transmission check
             if ch != 0x04:
                 sys.stdout.write(chr(ch))
