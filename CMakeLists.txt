@@ -5,6 +5,7 @@ set(MCU_SPEED 20000000 CACHE STRING "MCU clock speed")
 set(AVRDUDE_PROGRAMMER usbasp CACHE STRING "Programmer type")
 set(AVRDUDE_PORT "" CACHE STRING "Programmer port (empty for autodetect)")
 set(AVRDUDE_BAUD_RATE "" CACHE STRING "Programmer baud rate")
+set(AVRDUDE_BIT_CLOCK "" CACHE STRING "Programmer bit clock period")
 
 set(PASMO_PATH "" CACHE PATH "Path to pasmo assember's directory")
 
@@ -25,6 +26,9 @@ if (AVRDUDE_PORT)
 endif()
 if (AVRDUDE_BAUD_RATE)
     list(APPEND AVRDUDE_COMMON_OPTIONS -b ${AVRDUDE_BAUD_RATE})
+endif()
+if (AVRDUDE_BIT_CLOCK)
+    list(APPEND AVRDUDE_COMMON_OPTIONS -B ${AVRDUDE_BIT_CLOCK})
 endif()
 
 project(atmega-z80)
@@ -127,6 +131,42 @@ add_custom_target(
     atmega_fuse_init
     ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
         -U lfuse:w:0xF7:m
+        -U hfuse:w:0x99:m
+        -U efuse:w:0xFF:m
+        -U lock:w:0xFF:m
+)
+
+add_custom_target(
+    atmega_fuse_init_8000khz
+    ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
+        -U lfuse:w:0xC2:m
+        -U hfuse:w:0x99:m
+        -U efuse:w:0xFF:m
+        -U lock:w:0xFF:m
+)
+
+add_custom_target(
+    atmega_fuse_init_2500khz
+    ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
+        -U lfuse:w:0x77:m
+        -U hfuse:w:0x99:m
+        -U efuse:w:0xFF:m
+        -U lock:w:0xFF:m
+)
+
+add_custom_target(
+    atmega_fuse_init_128khz
+    ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
+        -U lfuse:w:0xE3:m
+        -U hfuse:w:0x99:m
+        -U efuse:w:0xFF:m
+        -U lock:w:0xFF:m
+)
+
+add_custom_target(
+    atmega_fuse_init_32khz
+    ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
+        -U lfuse:w:0x63:m
         -U hfuse:w:0x99:m
         -U efuse:w:0xFF:m
         -U lock:w:0xFF:m
