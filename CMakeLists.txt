@@ -164,7 +164,7 @@ add_custom_target(
 )
 
 add_custom_target(
-    atmega_fuse_init_32khz
+    atmega_fuse_init_16khz
     ${AVRDUDE} ${AVRDUDE_COMMON_OPTIONS}
         -U lfuse:w:0x63:m
         -U hfuse:w:0x99:m
