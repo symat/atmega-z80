@@ -223,7 +223,7 @@ cmake -DAVRDUDE_BIT_CLOCK=8 -DMCU_SPEED=1000000 .
 make atmega_fuse_init_128khz
 cmake -DAVRDUDE_BIT_CLOCK=50 -DMCU_SPEED=128000 .
 
-# if you want to change the clock speed to: 32KHz (this can be a bit tricky, see the SLOW CLOCK WARNING above)
+# if you want to change the clock speed to: 16KHz (this can be a bit tricky, see the SLOW CLOCK WARNING above)
 make atmega_fuse_init_16khz
 cmake -DAVRDUDE_BIT_CLOCK=200 -DMCU_SPEED=16000 .
 
@@ -256,9 +256,9 @@ An other 'slow clock' problem you can face with usbasp programmer is that avrdud
 ```
 avrdude: warning: cannot set sck period. please check for usbasp firmware update.
 ```
-Based on some googling, this happens when you have a very old usbasp programmer or if your programmer has some non-official usbasp frameware. In this case you either need to upgrade the programmer's firmware or you need to connect the 'slow clock' jumper on your programmer. This is JP1 on the original schematic of usbasp (https://www.fischl.de/usbasp/), while in case of my programmer, this was actually marked as JP3 (so be careful). If you choose the other option, the latest frameware can be downloaded from the usbasp site. However you will need to have a second programmer to be able to refresh the framework of your original programmer. (but I had to do this, as in my case, even the 'slow clock' jumper was not enough, after I set my ATMega to 16KHz)
+Based on some googling, this happens when you have a very old usbasp programmer or if your programmer has some non-official usbasp frameware. In this case you either need to upgrade the programmer's firmware or you need to connect the 'slow clock' jumper on your programmer. This is JP1 on the original schematic of usbasp (https://www.fischl.de/usbasp/), while in case of my programmer, this was actually marked as JP3 (so be careful). If you choose the other option, the latest frameware can be downloaded from the usbasp site. However you will need to have a second programmer to be able to refresh the framework of your original programmer. (but I had to do this, as in my case even the 'slow clock' jumper was not enough after I set my ATMgit statusega to 16KHz)
 
-Anyway, if you don't want to spend time on these 'slow clock' problems, then you can simply skip using clock rates slower than 1 MHz.
+Anyway, if you don't want to spend time on these 'slow clock' problems then you can simply skip using clock rates slower than 1 MHz.
 
 
 ### Deploying the ATMega code
