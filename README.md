@@ -192,18 +192,82 @@ ATMega shipped with internal 8MHz clock enabled and the clock prescaler set to 8
 
 **Make sure you are disconnecting the USB port while you are using the programmer to change the ATMega clock speed!**
 
-Use the following command (from the `src/atmega` folder) to set the fuses to the full 20MHz speed: `make atmega_fuse_init`
+You can set the fuses in ATMega to various clock speeds. We support the following speeds:
+- 20MHz (the full speed of our external osciallator)
+- 8 MHz (internal RC Oscillator)
+- 2.5 MHz (dividing the external oscillator speed by 8)
+- 1 MHz (internal RC Oscillator, divided by 8; this is the factory default for the ATMega chip)
+- 128 KHz (using the internal ATMega slow oscillator - might be tricky, see the slow clock warning)
+- 16 KHz (internal slow oscillator, divided by 8 - might be tricky, see the slow clock warning)
 
-If you want to rollback the factory defaults (1MHz internal clock), use: `make atmega_fuse_factory_reset`
+When you change the clock speed, you also need to change the MCU_SPEED parameter, to instruct the copmiler to use the proper speed. You need to run `cmake` and `make clean` and `make` to make sure your changes are taking effect. To test your settings, you can use the `make upload_blinky` to upload a program to ATMega which will blink the user led, once in each second. You can see the exact steps below.
+
+```
+# if you want to change the clock speed to: 20MHz
+make atmega_fuse_init
+cmake -DMCU_SPEED=20000000 .
+
+# if you want to change the clock speed to: 8MHz
+make atmega_fuse_init_8000khz
+cmake -DMCU_SPEED=8000000 .
+
+# if you want to change the clock speed to: 2.5MHz
+make atmega_fuse_init_2500khz
+cmake -DAVRDUDE_BIT_CLOCK=3 -DMCU_SPEED=2500000 .
+
+# if you want to change the clock speed to: 1MHz (this is the factory default)
+make atmega_fuse_factory_reset
+cmake -DAVRDUDE_BIT_CLOCK=8 -DMCU_SPEED=1000000 .
+
+# if you want to change the clock speed to: 128KHz (this can be a bit tricky, see the SLOW CLOCK WARNING above)
+make atmega_fuse_init_128khz
+cmake -DAVRDUDE_BIT_CLOCK=50 -DMCU_SPEED=128000 .
+
+# if you want to change the clock speed to: 16KHz (this can be a bit tricky, see the SLOW CLOCK WARNING above)
+make atmega_fuse_init_16khz
+cmake -DAVRDUDE_BIT_CLOCK=200 -DMCU_SPEED=16000 .
+
+
+# you need to rebuild the code with the new clock settings
+make clean
+make
+
+# this command will make your user LED on the board to flash once in each second
+# this way you can make sure the clock is set properly
+# (you will have to re-deploy the original ATMega code after this step)
+make upload_blinky
+```
+
+
+**!SLOW CLOCK WARNING!** (check this below, before you would try to use the slower clock options)
+
+You might see the following error when you try to program the board, after you changed the clock speed to some slower option:
+```
+avrdude: error: program enable: target doesn't answer. 1 
+avrdude: initialization failed, rc=-1
+         Double check connections and try again, or use -F to override
+         this check.
+
+avrdude done.  Thank you.
+```
+The problem can be that the usbasp programmer is trying to talk 'too fast' with the ATMega chip on our board, if you set slow ATMega clocks. Normally you can use the `-B` option for avrdude to instruct the programmer to talk slower. This option can be provided through the AVRDUDE_BIT_CLOCK cmake parameter. I tested the various clock speeds with different AVRDUDE_BIT_CLOCK parameters, so the above examples should work. However, there is a chance that your programmer is different. If you see this error, then you can try to increase the bit clock for your programmer. Also, increasing the bit clock will make the programming slower. So you might want to find the ideal AVRDUDE_BIT_CLOCK for your programmer.
+
+An other 'slow clock' problem you can face with usbasp programmer is that avrdude actually is unable to set the bit clock:
+```
+avrdude: warning: cannot set sck period. please check for usbasp firmware update.
+```
+Based on some googling, this happens when you have a very old usbasp programmer or if your programmer has some non-official usbasp frameware. In this case you either need to upgrade the programmer's firmware or you need to connect the 'slow clock' jumper on your programmer. This is JP1 on the original schematic of usbasp (https://www.fischl.de/usbasp/), while in case of my programmer, this was actually marked as JP3 (so be careful). If you choose the other option, the latest frameware can be downloaded from the usbasp site. However you will need to have a second programmer to be able to refresh the framework of your original programmer. (but I had to do this, as in my case even the 'slow clock' jumper was not enough after I set my ATMgit statusega to 16KHz)
+
+Anyway, if you don't want to spend time on these 'slow clock' problems then you can simply skip using clock rates slower than 1 MHz.
 
 
 ### Deploying the ATMega code
 
 Below it is shown how can you build the atmega code and flash it to ATMega. Note, the ATMega flash will not contain the Z80 'ROM code'. The Z80 code can be copied to ATMega by using the console app. **Make sure you are disconnecting the USB port while you are using the programmer!**
 ```
-cd src/atmega
+make clean
 make
-make program
+make upload_z80_prog_loader
 ```
 
 
