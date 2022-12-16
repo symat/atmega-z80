@@ -270,6 +270,8 @@ make
 make upload_z80_prog_loader
 ```
 
+You can run the tests for the ATMega program by: `python3 src/console/test_atmega_z80.py`
+To run a single test named as "test_upload_z80_code_to_ram": `python3 src/console/test_atmega_z80.py --test ATMegaZ80Tests.test_upload_z80_code_to_ram`
 
 Deploying the Z80 ROM code
 --------------------------
